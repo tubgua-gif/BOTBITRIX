@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8" />
+    <title>Tubelyt</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+        :root {
+            --bg: #f9fafb;
+            --panel: #ffffff;
+            --accent: #4f46e5;
+            --text: #1f2937;
+            --muted: #6b7280;
+            --bot: #f4f6ff;
+            --user: #e0f7fa;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            background: var(--bg);
+            font-family: 'Inter', system-ui, Arial, sans-serif;
+            color: var(--text);
+        }
+
+        /* --- Chat Container --- */
+        .chat-wrap {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 380px;
+            max-width: 95vw;
+            height: 560px;
+            display: flex;
+            flex-direction: column;
+            background: var(--panel);
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+            overflow: hidden;
+            z-index: 9999;
+            animation: slideUp 0.4s ease;
+        }
+
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        /* --- Chat Header --- */
+        .chat-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 16px;
+            background: linear-gradient(90deg, #4f46e5, #6366f1);
+            color: #fff;
+            position: relative;
+        }
+
+        .chat-head img {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 2px solid rgba(255,255,255,0.4);
+        }
+
+        /* --- Chat Body --- */
+        .chat-body {
+            flex: 1;
+            padding: 14px;
+            overflow: auto;
+            background: linear-gradient(180deg, #f8fafc 0%, #ffffff 100%);
+        }
+
+        /* --- Messages --- */
+        .msg {
+            display: flex;
+            align-items: flex-end;
+            gap: 8px;
+            margin: 8px 0;
+            animation: bubbleIn 0.3s ease;
+        }
+
+        .msg.bot { flex-direction: row; }
+        .msg.user { flex-direction: row-reverse; }
+
+        .bubble {
+            max-width: 75%;
+            padding: 10px 14px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.35;
+            word-break: break-word;
+            position: relative;
+            margin-bottom: 10px;
+            white-space: pre-line;
+        }
+
+        .bot .bubble {
+            background: var(--bot);
+            border: 1px solid #e5e7eb;
+            border-top-left-radius: 6px;
+        }
+
+        .user .bubble {
+            background: var(--user);
+            border: 1px solid #bae6fd;
+            border-top-right-radius: 6px;
+        }
+
+        .msg img.avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        @keyframes bubbleIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        /* --- Typing Indicator --- */
+        .typing {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--muted);
+            font-size: 12px;
+            padding: 6px 2px;
+        }
+
+        .typing .dot {
+            width: 6px;
+            height: 6px;
+            background: #a5b4fc;
+            border-radius: 50%;
+            animation: bounce 1.2s infinite ease-in-out;
+        }
+
+        .typing .dot:nth-child(2) { animation-delay: .2s; }
+        .typing .dot:nth-child(3) { animation-delay: .4s; }
+
+        @keyframes bounce {
+            0%,80%,100% { transform: translateY(0); opacity:.3; }
+            40% { transform: translateY(-3px); opacity:1; }
+        }
+
+        /* --- Chips --- */
+        .chips {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-top: 6px;
+        }
+
+        .chip {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #e5e7eb;
+            padding: 6px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.2s, border 0.2s;
+        }
+
+        .chip:hover {
+            background: #eef2ff;
+            border-color: #c7d2fe;
+        }
+
+        /* --- Chat Input --- */
+        .chat-input {
+            border-top: 1px solid #e5e7eb;
+            padding: 10px;
+            background: #fafafa;
+        }
+
+        .input-row { display: flex; gap: 8px; }
+
+        textarea {
+            flex: 1;
+            resize: none;
+            min-height: 48px;
+            max-height: 120px;
+            padding: 10px 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 14px;
+            outline: none;
+            background: #fff;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
+            transition: border 0.2s;
+        }
+
+        textarea:focus { border-color: var(--accent); }
+
+        button.send {
+            min-width: 86px;
+            border: none;
+            border-radius: 12px;
+            background: var(--accent);
+            color: #fff;
+            font-weight: 600;
+            cursor: pointer;
+            padding: 10px 12px;
+            transition: background 0.2s;
+        }
+
+        button.send:hover { background: #4338ca; }
+        button.send:disabled { opacity: .6; cursor: not-allowed; }
+
+        .hint { font-size: 11px; color: var(--muted); margin-top: 6px; }
+
+        /* --- ID Row --- */
+        .id-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0 0 0;
+            flex-wrap: wrap;
+        }
+
+        .mini {
+            font-size: 12px;
+            padding: 6px 8px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: #fff;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .mini:hover { background: #f9fafb; }
+        .mini:disabled { opacity: .6; cursor: not-allowed; }
+
+        #userSelect { max-width: 180px; }
+        #manualId { width: 110px; }
+
+        /* --- Chat Bubble (minimized) --- */
+        #chatBubble {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #4f46e5;
+            cursor: pointer;
+            animation: pulse 2s infinite ease-in-out;
+        }
+
+        @keyframes pulse {
+            0%,100% { transform: scale(1); opacity: 0.7; }
+            50% { transform: scale(1.1); opacity:1; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="chat-wrap">
+        <div class="chat-head">
+            <img src="https://cdn-icons-png.flaticon.com/512/4712/4712109.png" alt="Bot Avatar">
+            <div>
+                <div style="font-weight:700; font-size:14px;">Tubelyt</div>
+                <div id="userLabel" style="font-size:12px; opacity:.85">Usuario: no identificado</div>
+            </div>
+            <button id="minimizeBtn" style="position:absolute; top:8px; right:8px; width:24px; height:24px; border:none; border-radius:50%; background:#4f46e5; color:#fff; cursor:pointer;">-</button>
+        </div>
+
+        <div id="chat" class="chat-body"></div>
+
+        <div class="chat-input">
+            <div class="id-row">
+                <button id="identifyBtn" class="mini">Identificarme</button>
+                <select id="userSelect" class="mini" style="display:none"></select>
+                <button id="useBtn" class="mini" style="display:none">Usar</button>
+                <input id="manualId" class="mini" placeholder="ID Bitrix" style="display:none" />
+                <button id="manualBtn" class="mini" style="display:none">Usar ID</button>
+                <span id="bxOk" class="hint" style="display:none;color:green">Detectado desde Bitrix ✅</span>
+            </div>
+
+            <div class="chips" style="margin-top:8px;">
+                <span class="chip" data-q="TAREAS">Tareas</span>
+                <span class="chip" data-q="LEADS abiertos">Leads abiertos</span>
+                <span class="chip" data-q="NOTIFICACIONES">Notificaciones</span>
+            </div>
+
+            <div class="input-row" style="margin-top:8px;">
+                <textarea id="input" rows="1" placeholder="Escribe tu mensaje..."></textarea>
+                <button id="sendBtn" class="send">Enviar</button>
+            </div>
+            <div class="hint">Usa los botones predeterminados.</div>
+        </div>
+    </div>
+
+    <div id="chatBubble">
+        <span style="color:#fff; font-weight:bold; display:block; text-align:center; line-height:50px;">💬</span>
+    </div>
+
+    <script>
+        const BASE_URL = 'https://botdebitrix.onrender.com';
+        const chat = document.getElementById('chat');
+        const input = document.getElementById('input');
+        const btn = document.getElementById('sendBtn');
+        const identifyBtn = document.getElementById('identifyBtn');
+        const userSelect = document.getElementById('userSelect');
+        const useBtn = document.getElementById('useBtn');
+        const manualId = document.getElementById('manualId');
+        const manualBtn = document.getElementById('manualBtn');
+        const userLabel = document.getElementById('userLabel');
+        const bxOkBadge = document.getElementById('bxOk');
+        let USER_ID = null;
+        let USER_NAME = null;
+        let AUTH_ID = null;
+        let DOMAIN = null;
+        let typingEl = null;
+
+        function setUser(id, name){
+            USER_ID = id ? String(id) : null;
+            USER_NAME = (name || '').trim();
+            if(USER_ID){
+                userLabel.textContent = `Usuario: ${USER_NAME ? USER_NAME + ' ' : ''}(ID ${USER_ID})`;
+                localStorage.setItem('user_id', USER_ID);
+                localStorage.setItem('user_name', USER_NAME);
+            } else {
+                userLabel.textContent = 'Usuario: no identificado';
+                localStorage.removeItem('user_id');
+                localStorage.removeItem('user_name');
+            }
+        }
+
+        if(localStorage.getItem('user_id')){
+            setUser(localStorage.getItem('user_id'), localStorage.getItem('user_name')||'');
+        }
+
+        async function tryAutoIdentify(auth_id, domain){
+            try{
+                const res = await fetch(`${BASE_URL}/whoami?AUTH_ID=${auth_id}&DOMAIN=${domain}`);
+                const data = await res.json();
+                if(data.ok && data.id){
+                    setUser(data.id, data.name);
+                    AUTH_ID = auth_id;
+                    DOMAIN = domain;
+                    bxOkBadge.style.display = 'inline';
+                }
+            } catch(e){
+                console.error("Autoidentificación fallida:", e);
+            }
+        }
+
+        function scrollToBottom(){
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        if (typeof BX24 !== 'undefined') {
+            BX24.init(() => {
+                BX24.callMethod('user.current', {}, function(result){
+                    if(result.error()){ console.error("No se pudo detectar usuario Bitrix:", result.error()); }
+                    else {
+                        const user = result.data();
+                        const fullName = `${user.NAME} ${user.LAST_NAME}`;
+                        setUser(user.ID, fullName);
+                        bxOkBadge.style.display = 'inline';
+                        AUTH_ID = BX24.getAuth();
+                        DOMAIN = BX24.getDomain();
+                        tryAutoIdentify(AUTH_ID, DOMAIN);
+                    }
+                });
+            });
+        } else { console.log("BX24 no está definido, se usará identificación manual"); }
+
+        async function loadUsersList(){
+            identifyBtn.disabled = true;
+            try{
+                const r = await fetch(`${BASE_URL}/users`);
+                const data = await r.json();
+                if(data.ok && Array.isArray(data.users)){
+                    userSelect.innerHTML = '';
+                    data.users.forEach(u=>{
+                        const opt = document.createElement('option');
+                        opt.value = u.id;
+                        opt.textContent = `#${u.id} — ${u.name}`;
+                        userSelect.appendChild(opt);
+                    });
+                    userSelect.style.display = 'inline-block';
+                    useBtn.style.display = 'inline-block';
+                    manualId.style.display = 'none';
+                    manualBtn.style.display = 'none';
+                } else {
+                    userSelect.style.display = 'none';
+                    useBtn.style.display = 'none';
+                    manualId.style.display = 'inline-block';
+                    manualBtn.style.display = 'inline-block';
+                }
+            } catch(e){
+                userSelect.style.display = 'none';
+                useBtn.style.display = 'none';
+                manualId.style.display = 'inline-block';
+                manualBtn.style.display = 'inline-block';
+                console.error(e);
+            } finally {
+                identifyBtn.disabled = false;
+            }
+        }
+
+        identifyBtn.addEventListener('click', loadUsersList);
+
+        useBtn.addEventListener('click', ()=>{
+            const opt = userSelect.options[userSelect.selectedIndex];
+            setUser(opt.value, opt.textContent);
+        });
+
+        manualBtn.addEventListener('click', ()=>{
+            const id = (manualId.value||'').trim();
+            if(!id) return alert('Ingresa un ID de usuario');
+            setUser(id, '');
+        });
+
+        function addMsg(text, who='bot'){
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'msg ' + (who==='user'?'user':'bot');
+            const avatar = document.createElement('img');
+            avatar.className = 'avatar';
+            avatar.src = who==='user'
+                ? 'https://cdn-icons-png.flaticon.com/512/847/847969.png'
+                : 'https://cdn-icons-png.flaticon.com/512/4712/4712109.png';
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            bubble.textContent = text || '';
+            msgDiv.appendChild(avatar);
+            msgDiv.appendChild(bubble);
+            chat.appendChild(msgDiv);
+            scrollToBottom();
+        }
+
+        function showTyping(){
+            if(typingEl) return;
+            typingEl = document.createElement('div');
+            typingEl.className = 'typing';
+            typingEl.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span> escribiendo...';
+            chat.appendChild(typingEl);
+            scrollToBottom();
+        }
+
+        function hideTyping(){
+            if(typingEl && typingEl.parentNode) typingEl.parentNode.removeChild(typingEl);
+            typingEl = null;
+        }
+
+        async function send(){
+            const msg = (input.value||'').trim();
+            if(!msg) return;
+            if(!USER_ID){
+                addMsg('Primero identifícate (botón "Identificarme" arriba) o ingresa tu ID manual.', 'bot');
+                return;
+            }
+            addMsg(msg,'user');
+            input.value='';
+            autoGrow();
+            btn.disabled=true;
+            input.disabled=true;
+            showTyping();
+
+            try{
+                const body = { message: msg, user_id: USER_ID };
+                if(AUTH_ID && DOMAIN){ body.AUTH_ID = AUTH_ID; body.DOMAIN = DOMAIN; }
+                const res = await fetch(`${BASE_URL}/webhook`, {
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+                hideTyping();
+                addMsg(data && data.respuesta ? data.respuesta : 'No recibí respuesta del servidor.');
+            } catch(e){
+                hideTyping();
+                addMsg('Error de red: '+e.message);
+                console.error(e);
+            } finally {
+                btn.disabled=false;
+                input.disabled=false;
+                input.focus();
+            }
+        }
+
+        input.addEventListener('keydown',(e)=>{
+            if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); }
+        });
+        btn.addEventListener('click',send);
+
+        function autoGrow(){
+            input.style.height='auto';
+            input.style.height = Math.min(input.scrollHeight, 120)+'px';
+        }
+        input.addEventListener('input',autoGrow);
+
+        document.querySelectorAll('.chip').forEach(c=>{
+            c.addEventListener('click',()=>{
+                input.value = c.getAttribute('data-q');
+                autoGrow();
+                send();
+            });
+        });
+
+        addMsg('¡Hola! Identifícate para consultar tus datos en Bitrix (tareas, leads, notificaciones).');
+
+        const minimizeBtn = document.getElementById('minimizeBtn');
+        const chatWrap = document.querySelector('.chat-wrap');
+        const chatBubble = document.getElementById('chatBubble');
+
+        minimizeBtn.addEventListener('click',()=>{
+            chatWrap.style.display='none';
+            chatBubble.style.display='block';
+        });
+        chatBubble.addEventListener('click',()=>{
+            chatWrap.style.display='flex';
+            chatBubble.style.display='none';
+        });
+    </script>
+</body>
+</html>
