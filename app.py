@@ -1,40 +1,36 @@
-# =========================================
 # ==== 1) Imports ====
-# =========================================
-import os, re, json, requests, unicodedata, logging
+import os, re, requests, json, unicodedata
 from dotenv import load_dotenv
 from flask import Flask, request, render_template, jsonify
-from flask_cors import CORS
-from requests.exceptions import Timeout, RequestException
 import google.generativeai as genai
+from flask_cors import CORS
+import logging
+from requests.exceptions import Timeout, RequestException
 
 
-# =========================================
-# ==== 2) Configuración general ====
-# =========================================
+# ==== 2) Configuración logging ====
 logging.basicConfig(level=logging.INFO)
 
-# Cargar variables de entorno
+
+# ==== 3) Cargar variables de entorno (.env) ====
 load_dotenv()
 
-# Bitrix
 BITRIX = (os.getenv("BITRIX_WEBHOOK", "").strip() or "")
 if BITRIX and not BITRIX.endswith("/"):
     BITRIX += "/"
 
-# Gemini
 GEMINI_KEY = os.getenv("GEMINI_KEY", "").strip()
 if not GEMINI_KEY:
     raise ValueError("❌ No se encontró GEMINI_KEY en .env. Crea una en https://aistudio.google.com/app/apikey")
 
+
+# ==== 4) Configuración de Gemini ====
 genai.configure(api_key=GEMINI_KEY)
 GEMINI_MODEL = "gemini-1.5-flash"
 gemini_model = genai.GenerativeModel(GEMINI_MODEL)
 
 
-# =========================================
-# ==== 3) Funciones auxiliares Bitrix ====
-# =========================================
+# ==== 5) Funciones auxiliares Bitrix ====
 def _bx_post(method, payload=None, timeout=20, auth_id=None, domain=None):
     try:
         if auth_id and domain:
@@ -50,6 +46,7 @@ def _bx_post(method, payload=None, timeout=20, auth_id=None, domain=None):
 
         if "error" in data:
             raise RuntimeError(f"{data.get('error')}: {data.get('error_description')}")
+
         return data
 
     except Timeout:
@@ -73,6 +70,7 @@ def _bx_get(method, payload=None, timeout=20, auth_id=None, domain=None):
 
         if "error" in data:
             raise RuntimeError(f"{data.get('error')}: {data.get('error_description')}")
+
         return data
 
     except Timeout:
@@ -108,9 +106,7 @@ def _paged_list(method, base_filter=None, select=None, page_size=50, max_pages=1
     return items
 
 
-# =========================================
-# ==== 4) Consultas a Bitrix ====
-# =========================================
+# ==== 6) Consultas a Bitrix ====
 def consultar_tareas(user_id, limit=15, auth_id=None, domain=None):
     if not user_id:
         raise RuntimeError("No llegó user_id (identifícate primero).")
@@ -180,9 +176,7 @@ def consultar_deals(user_id, limit=15, auth_id=None, domain=None):
     return titulos
 
 
-# =========================================
-# ==== 5) Utilidades de texto ====
-# =========================================
+# ==== 7) Utilidades de texto ====
 def normalize_text(text):
     return ''.join(
         c for c in unicodedata.normalize('NFD', text.lower())
@@ -190,9 +184,7 @@ def normalize_text(text):
     )
 
 
-# =========================================
-# ==== 6) Flask App ====
-# =========================================
+# ==== 8) Flask App ====
 app = Flask(__name__)
 CORS(app, origins=["https://tubelite.bitrix24.es"])  # Restringido a tu dominio
 
@@ -212,9 +204,7 @@ def ping():
     return "pong", 200
 
 
-# =========================================
-# ==== 7) Endpoints Bitrix ====
-# =========================================
+# ---- Endpoints Bitrix ----
 @app.route('/users', methods=['GET'])
 def list_users():
     try:
@@ -326,6 +316,7 @@ def webhook():
         except Exception as e:
             return jsonify({"respuesta": f"❌ Error consultando tareas: {e}"})
 
+
     # --- Consultar leads abiertos ---
     if re.search(r"\bleads?\b.*\babiert", msg_l) or "leads abiertos" in msg_l:
         try:
@@ -335,6 +326,7 @@ def webhook():
             return jsonify({"respuesta": "📋 No encontré leads abiertos.\n\n\n"})
         except Exception as e:
             return jsonify({"respuesta": f"❌ Error consultando leads: {e}"})
+
 
     # --- Consultar deals (notificaciones) ---
     if "notificaciones" in msg_l:
@@ -346,6 +338,7 @@ def webhook():
             return jsonify({"respuesta": "No encontré Notificaciones."})
         except Exception as e:
             return jsonify({"respuesta": f"❌ Error consultando Notificaciones: {e}"})
+
 
     # --- Consultar pendientes ---
     if "pendiente" in msg_l or "asignado" in msg_l:
@@ -369,6 +362,7 @@ def webhook():
         except Exception as e:
             return jsonify({"respuesta": f"❌ Error consultando pendientes: {e}"})
 
+
     # --- Respuesta con Gemini ---
     try:
         resp = gemini_model.generate_content(mensaje)
@@ -389,9 +383,7 @@ def webhook():
         return jsonify({"respuesta": f"❌ Error con Gemini: {e}"})
 
 
-# =========================================
-# ==== 8) Iniciar servidor Flask ====
-# =========================================
+# ==== 9) Iniciar servidor Flask ====
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False, threaded=True)
